@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}حسابي - ابن النفيس{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto;">
+  <h1 class="section-title" style="font-size:1.4rem;margin-bottom:1.5rem;">👤 حسابي الشخصي</h1>
+
+  <!-- User Info Card -->
+  <div class="card mb-4">
+    <div class="flex items-center gap-3 mb-4">
+      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.5rem;">👤</div>
+      <div>
+        <div style="font-size:1.1rem;font-weight:700;">{{ user.username }}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);">
+          {% if user.role == 'admin' %}🛡️ مدير النظام{% else %}👤 زبون{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if customer %}
+    <div style="background:var(--bg-card2);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:0.6rem;">
+      <div class="flex items-center justify-between">
+        <span style="color:var(--text-muted);font-size:0.85rem;">🏷️ الاسم</span>
+        <span style="font-weight:600;">{{ customer.customer_name }}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span style="color:var(--text-muted);font-size:0.85rem;">📱 الهاتف</span>
+        <span>{{ customer.phone or '—' }}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span style="color:var(--text-muted);font-size:0.85rem;">📍 العنوان</span>
+        <span>{{ customer.address or '—' }}</span>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Balance Card -->
+  {% if customer %}
+  <div class="card mb-4">
+    <div class="section-title" style="font-size:1rem;">💰 كشف الحساب</div>
+    <div class="grid-2">
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">🔴 مدين (عليك)</div>
+        <div style="font-size:1.6rem;font-weight:800;color:var(--danger);">{{ customer.debt | round(2) }}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">دينار ليبي</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:1rem;text-align:center;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">🟢 دائن (لك)</div>
+        <div style="font-size:1.6rem;font-weight:800;color:var(--accent);">{{ customer.credit | round(2) }}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">دينار ليبي</div>
+      </div>
+    </div>
+    {% set net = customer.debt - customer.credit %}
+    <div style="margin-top:1rem;padding:0.85rem;border-radius:12px;text-align:center;
+      {% if net > 0 %}background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+      {% elif net < 0 %}background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
+      {% else %}background:var(--bg-card2);{% endif %}">
+      <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:4px;">الرصيد النهائي</div>
+      <div style="font-size:1.4rem;font-weight:800;
+        {% if net > 0 %}color:var(--danger);{% elif net < 0 %}color:var(--accent);{% else %}color:var(--text-muted);{% endif %}">
+        {% if net > 0 %}مدين {{ net | abs | round(2) }} د
+        {% elif net < 0 %}دائن {{ net | abs | round(2) }} د
+        {% else %}متزن ✅{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Quick Links -->
+  <div class="card">
+    <div class="section-title" style="font-size:1rem;">🔗 روابط سريعة</div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+      <a href="/store" class="btn btn-primary">🛒 تصفح المتجر</a>
+      {% if user.role == 'admin' %}
+      <a href="/dashboard" class="btn btn-outline">⚙️ لوحة التحكم</a>
+      {% endif %}
+      <a href="/logout" class="btn btn-danger">🚪 تسجيل الخروج</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

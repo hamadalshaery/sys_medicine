@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy
+pg8000
+mangum
+Jinja2
+python-multipart
+python-jose[cryptography]
+passlib
+aiofiles
+python-dotenv
+pandas
+openpyxl
+fpdf2
+arabic-reshaper
+python-bidi
+httpx

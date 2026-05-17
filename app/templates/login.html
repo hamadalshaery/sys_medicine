@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}تسجيل الدخول - ابن النفيس{% endblock %}
+
+{% block full_page %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>تسجيل الدخول - ابن النفيس</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/custom.css"/>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div class="login-logo">🏥 ابن النفيس</div>
+      <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.5rem;">نظام إدارة الصيدلية المتكامل</p>
+    </div>
+
+    {% if error %}
+    <div style="background:rgba(239,68,68,0.15);border:1px solid var(--danger);border-radius:10px;padding:0.75rem;color:#f87171;font-size:0.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:8px;">
+      ❌ {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-group">
+        <label class="form-label">👤 اسم المستخدم</label>
+        <input name="username" required class="form-input" placeholder="أدخل اسم المستخدم" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">🔒 كلمة المرور</label>
+        <input name="password" type="password" required class="form-input" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-full" style="margin-top:0.5rem;">
+        🚀 دخول إلى النظام
+      </button>
+    </form>
+
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);text-align:center;">
+      <p style="color:var(--text-muted);font-size:0.8rem;">💡 المديرون يصلون إلى لوحة التحكم الكاملة</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+{% endblock %}

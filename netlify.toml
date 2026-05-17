@@ -1,0 +1,11 @@
+[build]
+  functions = "netlify/functions"
+  publish = "frontend/build"
+
+[dev]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

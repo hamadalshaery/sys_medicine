@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% block title %}المتجر - ابن النفيس{% endblock %}
+
+{% block content %}
+<div class="flex" style="gap:1.25rem;align-items:flex-start;">
+
+  <!-- ═══ Cart Sidebar ═══ -->
+  <div style="width:300px;flex-shrink:0;">
+    <div class="cart-panel">
+      <div class="cart-title">🛒 سلة المشتريات <span id="cart-count" style="background:var(--primary);color:white;font-size:0.7rem;padding:2px 8px;border-radius:20px;margin-right:auto;">0</span></div>
+
+      <!-- Payment Method Tabs -->
+      <div>
+        <p class="form-label mb-2">💳 طريقة الدفع</p>
+        <div class="payment-tabs">
+          <button class="pay-tab cash" id="tab-cash" onclick="setPayMode('cash')">
+            💵 كاش<br><small>خصم 10%</small>
+          </button>
+          <button class="pay-tab transfer" id="tab-transfer" onclick="setPayMode('transfer')">
+            🏦 تحويل<br><small>خصم 5%</small>
+          </button>
+          <button class="pay-tab credit active" id="tab-credit" onclick="setPayMode('credit')">
+            🕐 أجل<br><small>بدون خصم</small>
+          </button>
+        </div>
+
+        <!-- Discount Preview Banner -->
+        <div id="discount-banner" class="hidden" style="background:rgba(16,185,129,0.1);border:1px solid var(--accent);border-radius:10px;padding:0.6rem 0.8rem;font-size:0.82rem;margin-top:0.5rem;text-align:center;color:var(--cash-color);">
+          🎉 <span id="discount-text"></span>
+        </div>
+      </div>
+
+      <!-- Pharmacy Name -->
+      <div class="form-group">
+        <label class="form-label">🏥 اسم الصيدلية</label>
+        <input id="pharmacy" class="form-input" placeholder="مثال: صيدلية الرشيد" style="font-size:0.85rem;"/>
+      </div>
+
+      <!-- Cart Items -->
+      <div id="cart-items" style="display:flex;flex-direction:column;gap:0.5rem;min-height:60px;">
+        <p id="cart-empty" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:1rem 0;">السلة فارغة 🛒</p>
+      </div>
+
+      <!-- Totals -->
+      <div class="cart-totals" id="cart-totals" style="display:none;">
+        <div class="total-row"><span>المجموع الأصلي</span><span class="val" id="t-orig">0 د</span></div>
+        <div class="total-row" id="row-discount" style="display:none;color:var(--cash-color);"><span>الخصم 🎉</span><span class="val" id="t-disc">0 د</span></div>
+        <div class="total-row final"><span style="font-weight:700;">الإجمالي النهائي</span><span class="val" id="t-final">0 د</span></div>
+      </div>
+
+      <!-- Checkout Button -->
+      <button id="checkout-btn" class="btn btn-success btn-full" onclick="checkout()" disabled style="opacity:0.5;">
+        ✅ إتمام الطلب
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ Products Area ═══ -->
+  <div style="flex:1;min-width:0;">
+
+    <!-- Top Bar -->
+    <div class="flex items-center justify-between mb-4" style="flex-wrap:wrap;gap:0.75rem;">
+      <div>
+        <h1 style="font-size:1.5rem;font-weight:800;">🏪 كتالوج الأدوية</h1>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:2px;">تصفح الأدوية المتوفرة وأضفها للسلة</p>
+      </div>
+      <div class="flex gap-2" style="flex-wrap:wrap;">
+        <a href="/store" class="btn btn-outline btn-sm {% if not new %}active{% endif %}">📦 الكل</a>
+        <a href="/store?new=true" class="btn btn-success btn-sm {% if new %}active{% endif %}">🆕 جديد الوصول</a>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-wrap mb-4">
+      <span class="icon">🔍</span>
+      <input type="text" id="search-box" class="" placeholder="ابحث عن دواء بالاسم أو الكود أو الباركود..." oninput="liveSearch(this.value)"
+        style="width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:0.75rem 1rem 0.75rem 2.8rem;color:var(--text);font-family:Tajawal,sans-serif;font-size:0.95rem;outline:none;transition:border-color 0.2s;"
+        onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"/>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="grid-auto" id="products-grid">
+      {% for product in products %}
+      {% set cash_price   = (product.price * 0.90) | round(2) %}
+      {% set trans_price  = (product.price * 0.95) | round(2) %}
+      {% set orig_price   = product.price | round(2) %}
+
+      <div class="med-card"
+           data-code="{{ product.item_code }}"
+           data-name="{{ product.name }}"
+           data-price="{{ product.price }}"
+           data-category="{{ product.category }}"
+           data-qty="{{ product.quantity }}">
+
+        <!-- Image -->
+        <div class="med-img-wrap">
+          {% if product.image_url %}
+            <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy"/>
+          {% else %}
+            <span class="med-img-placeholder">💊</span>
+          {% endif %}
+          {% if product.is_new_arrival %}
+          <span class="badge-new">🆕 جديد</span>
+          {% endif %}
+        </div>
+
+        <!-- Body -->
+        <div class="med-body">
+          <span class="med-category">{{ product.category or 'عام' }}</span>
+          <h3 class="med-name">{{ product.name }}</h3>
+          <span class="med-code">كود: {{ product.item_code }}</span>
+
+          <!-- Price Box with all 3 options -->
+          <div class="price-box">
+            <div class="price-row">
+              <span class="price-label">💵 كاش</span>
+              <span class="flex items-center gap-2">
+                <span class="price-val cash">{{ cash_price }} د</span>
+                <span class="discount-tag cash">-10%</span>
+              </span>
+            </div>
+            <div class="price-row">
+              <span class="price-label">🏦 تحويل</span>
+              <span class="flex items-center gap-2">
+                <span class="price-val transfer">{{ trans_price }} د</span>
+                <span class="discount-tag transfer">-5%</span>
+              </span>
+            </div>
+            <div class="price-row">
+              <span class="price-label">🕐 أجل</span>
+              <span class="price-val credit">{{ orig_price }} د</span>
+            </div>
+          </div>
+
+          <!-- Stock -->
+          <div class="flex items-center justify-between mt-2">
+            {% if product.quantity > 10 %}
+              <span class="stock-badge ok">✅ متوفر ({{ product.quantity }})</span>
+            {% elif product.quantity > 0 %}
+              <span class="stock-badge low">⚠️ محدود ({{ product.quantity }})</span>
+            {% else %}
+              <span class="stock-badge out">❌ نفد المخزون</span>
+            {% endif %}
+            {% if product.expiry_date %}
+              <span class="expiry-ok" style="font-size:0.72rem;">📅 {{ product.expiry_date }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Add to Cart Button -->
+          <button class="btn btn-primary btn-full mt-2 add-to-cart-btn"
+                  {% if product.quantity == 0 %}disabled style="opacity:0.4;"{% endif %}
+                  onclick="addToCart('{{ product.item_code }}','{{ product.name|replace("'","\\'")|replace('"','\\"') }}',{{ product.price }},'{{ product.category }}')">
+            {% if product.quantity > 0 %}🛒 أضف للسلة{% else %}⛔ غير متوفر{% endif %}
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text-muted);">
+        <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+        <p style="font-size:1.1rem;">لا توجد أدوية متاحة حالياً</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Barcode Scanner Section -->
+    <div class="card mt-4">
+      <div class="section-title">📷 بحث بالباركود</div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;">
+        <input id="barcode-input" class="form-input" style="max-width:260px;" placeholder="أدخل الباركود يدوياً..." />
+        <button class="btn btn-outline" onclick="searchBarcode()">🔍 بحث</button>
+        <button class="btn btn-outline" onclick="toggleCamera()" id="cam-btn">📷 تشغيل الكاميرا</button>
+      </div>
+      <div id="qr-reader" style="width:100%;max-width:400px;"></div>
+      <div id="barcode-result" class="mt-3"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+<script>
+// ══════════════════════════════════
+//  Payment Mode & Cart Logic
+// ══════════════════════════════════
+const RATES = { cash: 0.90, transfer: 0.95, credit: 1.0 };
+const DISC_LABELS = { cash: 'خصم 10% مفعّل 🎉', transfer: 'خصم 5% مفعّل 🎉', credit: '' };
+let payMode = 'credit';
+let cart = {};   // { item_code: {name, origPrice, qty, category} }
+
+function setPayMode(mode) {
+  payMode = mode;
+  ['cash','transfer','credit'].forEach(m => {
+    document.getElementById(`tab-${m}`).classList.toggle('active', m === mode);
+  });
+  const banner = document.getElementById('discount-banner');
+  const txt = DISC_LABELS[mode];
+  if (txt) {
+    document.getElementById('discount-text').textContent = txt;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+  renderCart();
+}
+
+function addToCart(code, name, origPrice, category) {
+  if (!cart[code]) cart[code] = {name, origPrice, qty:0, category};
+  cart[code].qty++;
+  renderCart();
+  showToast(`✅ تمت إضافة "${name}" للسلة`, 'success');
+}
+
+function changeQty(code, delta) {
+  if (!cart[code]) return;
+  cart[code].qty += delta;
+  if (cart[code].qty <= 0) delete cart[code];
+  renderCart();
+}
+
+function removeItem(code) {
+  delete cart[code];
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cart-items');
+  const empty = document.getElementById('cart-empty');
+  const totalsDiv = document.getElementById('cart-totals');
+  const checkBtn = document.getElementById('checkout-btn');
+  const countBadge = document.getElementById('cart-count');
+
+  const items = Object.entries(cart);
+  countBadge.textContent = items.reduce((s,[,v]) => s+v.qty, 0);
+
+  if (!items.length) {
+    empty.style.display = 'block';
+    totalsDiv.style.display = 'none';
+    checkBtn.disabled = true;
+    checkBtn.style.opacity = '0.5';
+    container.innerHTML = '';
+    container.appendChild(empty);
+    return;
+  }
+
+  empty.style.display = 'none';
+  let origTotal = 0, finalTotal = 0;
+  let html = '';
+  items.forEach(([code, item]) => {
+    const effPrice = +(item.origPrice * RATES[payMode]).toFixed(2);
+    const lineOrig  = +(item.origPrice * item.qty).toFixed(2);
+    const lineFinal = +(effPrice * item.qty).toFixed(2);
+    origTotal  += lineOrig;
+    finalTotal += lineFinal;
+    html += `
+    <div class="cart-item">
+      <div style="flex:1;min-width:0;">
+        <div class="cart-item-name" style="font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);">${effPrice} د × ${item.qty}</div>
+      </div>
+      <div class="cart-qty-wrap">
+        <button class="cart-qty-btn" onclick="changeQty('${code}',-1)">−</button>
+        <span class="cart-qty-val">${item.qty}</span>
+        <button class="cart-qty-btn" onclick="changeQty('${code}',1)">+</button>
+      </div>
+      <span class="cart-item-price">${lineFinal.toFixed(2)}د</span>
+      <button class="cart-item-remove" onclick="removeItem('${code}')">✕</button>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  const discount = +(origTotal - finalTotal).toFixed(2);
+  document.getElementById('t-orig').textContent  = origTotal.toFixed(2) + ' د';
+  document.getElementById('t-final').textContent = finalTotal.toFixed(2) + ' د';
+  const discRow = document.getElementById('row-discount');
+  if (discount > 0) {
+    document.getElementById('t-disc').textContent = '-' + discount.toFixed(2) + ' د';
+    discRow.style.display = 'flex';
+  } else { discRow.style.display = 'none'; }
+
+  totalsDiv.style.display = 'block';
+  checkBtn.disabled = false;
+  checkBtn.style.opacity = '1';
+}
+
+async function checkout() {
+  const items = Object.entries(cart);
+  if (!items.length) return showToast('السلة فارغة!', 'error');
+  const pharmacy = document.getElementById('pharmacy').value.trim();
+  if (!pharmacy) return showToast('يرجى إدخال اسم الصيدلية', 'error');
+
+  const cartItems = items.map(([code, item]) => ({
+    item_code: code,
+    name: item.name,
+    category: item.category,
+    quantity: item.qty,
+    unit_price: +(item.origPrice * RATES[payMode]).toFixed(2),
+    original_price: item.origPrice
+  }));
+
+  const btn = document.getElementById('checkout-btn');
+  btn.innerHTML = '<span class="spinner"></span> جارٍ الإرسال...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/cart/checkout', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cart_items: cartItems, payment_method: payMode, pharmacy })
+    });
+    if (r.ok) {
+      const d = await r.json();
+      showToast('✅ تم إتمام الطلب بنجاح!', 'success', 4000);
+      cart = {};
+      renderCart();
+      if (d.pdf_url) window.open(d.pdf_url, '_blank');
+    } else {
+      const err = await r.json().catch(()=>({detail:'خطأ غير معروف'}));
+      if (r.status === 401) {
+        showToast('يجب تسجيل الدخول أولاً', 'error');
+        setTimeout(()=>location.href='/login', 1500);
+      } else {
+        showToast(err.detail || 'فشل إتمام الطلب', 'error');
+      }
+    }
+  } catch(e) { showToast('خطأ في الاتصال بالخادم', 'error'); }
+  finally {
+    btn.innerHTML = '✅ إتمام الطلب';
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════
+//  Live Search
+// ══════════════════════════════════
+let searchTimer = null;
+function liveSearch(q) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    if (!q.trim()) { location.href = '/store'; return; }
+    const r = await fetch(`/api/products?q=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    renderProducts(data);
+  }, 400);
+}
+
+function renderProducts(products) {
+  const grid = document.getElementById('products-grid');
+  if (!products.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text-muted);">
+      <div style="font-size:3rem;">📭</div><p>لا توجد نتائج</p></div>`;
+    return;
+  }
+  grid.innerHTML = products.map(p => {
+    const cash  = (p.price * 0.90).toFixed(2);
+    const trans = (p.price * 0.95).toFixed(2);
+    const orig  = p.price.toFixed(2);
+    const stockBadge = p.quantity > 10
+      ? `<span class="stock-badge ok">✅ متوفر (${p.quantity})</span>`
+      : p.quantity > 0
+        ? `<span class="stock-badge low">⚠️ محدود (${p.quantity})</span>`
+        : `<span class="stock-badge out">❌ نفد</span>`;
+    return `
+    <div class="med-card">
+      <div class="med-img-wrap">
+        <span class="med-img-placeholder">💊</span>
+        ${p.is_new_arrival ? '<span class="badge-new">🆕 جديد</span>' : ''}
+      </div>
+      <div class="med-body">
+        <span class="med-category">${p.category||'عام'}</span>
+        <h3 class="med-name">${p.name}</h3>
+        <span class="med-code">كود: ${p.item_code}</span>
+        <div class="price-box">
+          <div class="price-row">
+            <span class="price-label">💵 كاش</span>
+            <span class="flex items-center gap-2">
+              <span class="price-val cash">${cash} د</span>
+              <span class="discount-tag cash">-10%</span>
+            </span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">🏦 تحويل</span>
+            <span class="flex items-center gap-2">
+              <span class="price-val transfer">${trans} د</span>
+              <span class="discount-tag transfer">-5%</span>
+            </span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">🕐 أجل</span>
+            <span class="price-val credit">${orig} د</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-2">${stockBadge}</div>
+        <button class="btn btn-primary btn-full mt-2"
+          ${p.quantity===0?'disabled style="opacity:0.4;"':''}
+          onclick="addToCart('${p.item_code}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p.category}')">
+          ${p.quantity>0?'🛒 أضف للسلة':'⛔ غير متوفر'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+//  Barcode Scanner
+// ══════════════════════════════════
+let html5QrCode = null;
+let cameraOn = false;
+
+function toggleCamera() {
+  if (cameraOn) { stopCamera(); }
+  else { startCamera(); }
+}
+
+function startCamera() {
+  const btn = document.getElementById('cam-btn');
+  if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+  Html5Qrcode.getCameras().then(cameras => {
+    if (!cameras.length) return showToast('لا توجد كاميرا', 'error');
+    html5QrCode.start(cameras[0].id,
+      {fps:10, qrbox:{width:250, height:150}},
+      (text) => { stopCamera(); searchBarcodeValue(text); },
+      () => {}
+    ).then(() => { cameraOn = true; btn.textContent = '⏹️ إيقاف الكاميرا'; });
+  }).catch(() => showToast('تعذر تشغيل الكاميرا', 'error'));
+}
+
+function stopCamera() {
+  if (html5QrCode && cameraOn) {
+    html5QrCode.stop().catch(()=>{});
+    cameraOn = false;
+    document.getElementById('cam-btn').textContent = '📷 تشغيل الكاميرا';
+  }
+}
+
+function searchBarcode() {
+  const val = document.getElementById('barcode-input').value.trim();
+  if (val) searchBarcodeValue(val);
+}
+
+async function searchBarcodeValue(code) {
+  const resDiv = document.getElementById('barcode-result');
+  resDiv.innerHTML = '<span class="spinner"></span>';
+  try {
+    const r = await fetch(`/api/barcode-search?code=${encodeURIComponent(code)}`);
+    if (!r.ok) {
+      resDiv.innerHTML = `<div class="toast error" style="position:static;animation:none;max-width:100%;">❌ لم يتم العثور على الكود: ${code}</div>`;
+      return;
+    }
+    const p = await r.json();
+    const cash  = (p.price * 0.90).toFixed(2);
+    const trans = (p.price * 0.95).toFixed(2);
+    resDiv.innerHTML = `
+    <div class="card" style="margin-top:0.5rem;">
+      <div class="flex items-center gap-3">
+        <span style="font-size:2.5rem;">💊</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;">${p.name}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">كود: ${p.item_code} | فئة: ${p.category||'عام'}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addToCart('${p.item_code}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p.category||''}')">
+          🛒 أضف
+        </button>
+      </div>
+      <div class="price-box" style="margin-top:0.75rem;">
+        <div class="price-row"><span class="price-label">💵 كاش</span><span class="price-val cash">${cash} د <span class="discount-tag cash">-10%</span></span></div>
+        <div class="price-row"><span class="price-label">🏦 تحويل</span><span class="price-val transfer">${trans} د <span class="discount-tag transfer">-5%</span></span></div>
+        <div class="price-row"><span class="price-label">🕐 أجل</span><span class="price-val credit">${p.price.toFixed(2)} د</span></div>
+      </div>
+    </div>`;
+  } catch { resDiv.innerHTML = `<div class="toast error" style="position:static;animation:none;max-width:100%;">❌ خطأ في الاتصال</div>`; }
+}
+</script>
+{% endblock %}

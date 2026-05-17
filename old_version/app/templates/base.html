@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="نظام إدارة الصيدلية المتكامل - شركة ابن النفيس" />
+  <title>{% block title %}صيدلية ابن النفيس{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/custom.css" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{% block full_page %}
+<!-- Header -->
+<header class="ph-header">
+  <a href="/" class="ph-logo">🏥 ابن النفيس</a>
+  <nav class="ph-nav" id="main-nav">
+    <a href="/store" id="nav-store">🛒 المتجر</a>
+    {% if user and user.role == 'admin' %}
+    <a href="/dashboard" id="nav-dash">⚙️ لوحة التحكم</a>
+    {% endif %}
+    {% if user %}
+    <a href="/profile" id="nav-profile">👤 {{ user.username }}</a>
+    <a href="/logout" class="logout">خروج</a>
+    {% else %}
+    <a href="/login">تسجيل الدخول</a>
+    {% endif %}
+  </nav>
+</header>
+
+<!-- Toast Container -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<main class="ph-main">
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}
+
+<script>
+function showToast(msg, type='success', dur=3500) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  const icons = {success:'✅', error:'❌', info:'ℹ️'};
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]||''}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), dur);
+}
+
+// Mark active nav
+(function(){
+  const path = location.pathname;
+  document.querySelectorAll('.ph-nav a').forEach(a => {
+    if(a.getAttribute('href') && path.startsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+})();
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
