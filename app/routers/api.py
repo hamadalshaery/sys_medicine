@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.routers import sales, products, dashboard_api, auth, users
+from app.routers import sales, products, dashboard_api, auth, users, upload
 
 # إنشاء راوتر التجميع الرئيسي للـ API
 router = APIRouter()
@@ -19,5 +19,6 @@ router.include_router(products.router)
 # دمج راوتر لوحة التحكم (Dashboard)
 router.include_router(dashboard_api.router)
 
+# رفع الملفات والزبائن
+router.include_router(upload.router)
 
-# يمكن إضافة راوترات أخرى مستقبلاً مثل customers و inventory
