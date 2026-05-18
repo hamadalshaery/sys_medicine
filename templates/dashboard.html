@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم - ابن النفيس{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="admin-sidebar">
+    <p class="sidebar-section">القائمة الرئيسية</p>
+    <a class="sidebar-link active" onclick="showSection('overview')">📊 نظرة عامة</a>
+    <a class="sidebar-link" onclick="showSection('medicines')">💊 الأدوية</a>
+    <a class="sidebar-link" onclick="showSection('customers')">👥 الزبائن</a>
+    <a class="sidebar-link" onclick="showSection('upload')">📤 رفع البيانات</a>
+    <a class="sidebar-link" onclick="showSection('notify')">📢 الإشعارات</a>
+    <p class="sidebar-section" style="margin-top:auto;">النظام</p>
+    <a class="sidebar-link" href="/store">🛒 المتجر</a>
+    <a class="sidebar-link" href="/logout" style="color:#f87171;">🚪 خروج</a>
+  </aside>
+
+  <!-- ═══ Content ═══ -->
+  <div class="admin-content">
+
+    <!-- ── Overview ── -->
+    <div id="sec-overview">
+      <h1 class="section-title" style="font-size:1.4rem;">📊 لوحة التحكم</h1>
+      <div class="grid-4 mb-4">
+        <div class="stat-card indigo">
+          <div class="stat-icon indigo">💰</div>
+          <span class="stat-label">إجمالي الديون (علينا)</span>
+          <span class="stat-value">{{ total_debt | round(2) }}</span>
+          <span class="stat-sub">دينار ليبي</span>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">💵</div>
+          <span class="stat-label">إجمالي الدائن (لنا)</span>
+          <span class="stat-value">{{ total_credit | round(2) }}</span>
+          <span class="stat-sub">دينار ليبي</span>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon amber">⏰</div>
+          <span class="stat-label">أدوية منتهية قريباً</span>
+          <span class="stat-value" style="color:var(--warning);">{{ expiring_count }}</span>
+          <span class="stat-sub">خلال 45 يوم</span>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon green">🆕</div>
+          <span class="stat-label">أصناف جديدة الوصول</span>
+          <span class="stat-value" style="color:var(--accent);">{{ new_arrivals }}</span>
+          <span class="stat-sub">منتج</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-title">⚠️ تنبيهات النظام</div>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:0.6rem;">
+            {% if expiring_count > 0 %}
+            <li style="padding:0.6rem;background:rgba(245,158,11,0.08);border-radius:8px;border-right:3px solid var(--warning);font-size:0.87rem;">
+              ⚠️ يوجد {{ expiring_count }} صنف ينتهي خلال 45 يوماً — راجع تقرير الصلاحية
+            </li>
+            {% endif %}
+            <li style="padding:0.6rem;background:rgba(99,102,241,0.08);border-radius:8px;border-right:3px solid var(--primary);font-size:0.87rem;">
+              📌 احرص على رفع ملف Excel أسبوعياً لتحديث البيانات
+            </li>
+            <li style="padding:0.6rem;background:rgba(16,185,129,0.08);border-radius:8px;border-right:3px solid var(--accent);font-size:0.87rem;">
+              🤖 البوت متصل — يمكن إرسال ملف Excel عبر تيليجرام لتحديث تلقائي
+            </li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="section-title">📡 حالة النظام</div>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <div class="flex items-center justify-between" style="padding:0.6rem;background:var(--bg-card2);border-radius:8px;">
+              <span style="font-size:0.87rem;">🗄️ قاعدة البيانات</span>
+              <span style="color:var(--accent);font-size:0.8rem;font-weight:700;">✅ متصلة</span>
+            </div>
+            <div class="flex items-center justify-between" style="padding:0.6rem;background:var(--bg-card2);border-radius:8px;">
+              <span style="font-size:0.87rem;">🤖 بوت تيليجرام</span>
+              <span style="color:var(--accent);font-size:0.8rem;font-weight:700;" id="bot-status">⏳ جارٍ الفحص...</span>
+            </div>
+            <div class="flex items-center justify-between" style="padding:0.6rem;background:var(--bg-card2);border-radius:8px;">
+              <span style="font-size:0.87rem;">👤 المستخدمون</span>
+              <span style="color:var(--primary);font-size:0.8rem;font-weight:700;">{{ total_users }} مستخدم</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Medicines ── -->
+    <div id="sec-medicines" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="section-title" style="margin:0;">💊 إدارة الأدوية</h2>
+        <div class="flex gap-2">
+          <input id="med-search" class="form-input" style="max-width:240px;" placeholder="ابحث عن دواء..." oninput="searchMeds(this.value)"/>
+          <a href="/store?new=true" class="btn btn-success btn-sm">🆕 جديد الوصول</a>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="ph-table" id="meds-table">
+          <thead>
+            <tr>
+              <th>الكود</th><th>الاسم</th><th>الفئة</th>
+              <th>السعر الأصلي</th><th>كاش (-10%)</th><th>تحويل (-5%)</th>
+              <th>المخزون</th><th>الصلاحية</th>
+            </tr>
+          </thead>
+          <tbody id="meds-body">
+            <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> جارٍ التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Customers ── -->
+    <div id="sec-customers" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="section-title" style="margin:0;">👥 الزبائن والحسابات</h2>
+        <input id="cust-search" class="form-input" style="max-width:240px;" placeholder="ابحث بالاسم أو الرقم..." oninput="searchCustomers(this.value)"/>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="ph-table" id="cust-table">
+          <thead>
+            <tr><th>الرقم</th><th>الاسم</th><th>الحساب الرئيسي</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>الهاتف</th></tr>
+          </thead>
+          <tbody id="cust-body">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> جارٍ التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Upload ── -->
+    <div id="sec-upload" class="hidden">
+      <h2 class="section-title">📤 رفع وتحديث البيانات</h2>
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-title" style="font-size:1rem;">📁 رفع ملف Excel</div>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">يدعم ملفات الأدوية والزبائن بصيغة .xlsx</p>
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem;">📂</div>
+            <p style="font-weight:600;">اضغط لاختيار ملف أو اسحبه هنا</p>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;">صيغة .xlsx فقط</p>
+          </div>
+          <input type="file" id="file-input" accept=".xlsx" style="display:none;" onchange="uploadFile(this)"/>
+          <div id="upload-result" class="mt-3"></div>
+          <div id="upload-progress" class="hidden mt-3" style="background:var(--bg-card2);border-radius:8px;height:8px;overflow:hidden;">
+            <div id="upload-bar" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s;border-radius:8px;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title" style="font-size:1rem;">🤖 التحديث عبر تيليجرام</div>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <div style="background:var(--bg-card2);border-radius:12px;padding:1rem;">
+              <p style="font-weight:700;margin-bottom:0.5rem;">📱 كيفية التحديث عبر البوت</p>
+              <ol style="font-size:0.84rem;color:var(--text-muted);padding-right:1rem;line-height:2;">
+                <li>افتح بوت تيليجرام <strong style="color:var(--primary);">@YourPharmacyBot</strong></li>
+                <li>أرسل ملف Excel (.xlsx) مباشرة للبوت</li>
+                <li>سيتم التحديث تلقائياً وسيتلقى الزبائن إشعاراً</li>
+                <li>يتحدث الموقع فوراً بالبيانات الجديدة</li>
+              </ol>
+            </div>
+            <div style="background:rgba(16,185,129,0.08);border:1px solid var(--accent);border-radius:10px;padding:0.75rem;font-size:0.84rem;color:var(--cash-color);">
+              ✅ البوت والموقع يشتركان في نفس قاعدة البيانات — أي تحديث ينعكس فوراً
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Notify ── -->
+    <div id="sec-notify" class="hidden">
+      <h2 class="section-title">📢 إرسال إشعارات للمستخدمين</h2>
+      <div class="card" style="max-width:600px;">
+        <div class="form-group mb-3">
+          <label class="form-label">📝 نص الرسالة</label>
+          <textarea id="notify-msg" class="form-input" rows="5" placeholder="اكتب رسالتك هنا..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="sendNotify()">📤 إرسال للجميع</button>
+        <div id="notify-result" class="mt-3"></div>
+      </div>
+    </div>
+
+  </div><!-- end admin-content -->
+</div>
+
+<script>
+// ── Section Navigation ──
+function showSection(name) {
+  ['overview','medicines','customers','upload','notify'].forEach(s => {
+    document.getElementById(`sec-${s}`).classList.toggle('hidden', s !== name);
+  });
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (name === 'medicines') loadMeds();
+  if (name === 'customers') loadCustomers();
+}
+
+// ── Load Medicines ──
+async function loadMeds(q='') {
+  const body = document.getElementById('meds-body');
+  body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span></td></tr>';
+  const r = await fetch(`/api/products?q=${encodeURIComponent(q)}`);
+  const data = await r.json();
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">لا توجد نتائج</td></tr>';
+    return;
+  }
+  body.innerHTML = data.map(p => {
+    const cash = (p.price*0.90).toFixed(2), trans = (p.price*0.95).toFixed(2);
+    const stockColor = p.quantity > 10 ? 'var(--accent)' : p.quantity > 0 ? 'var(--warning)' : 'var(--danger)';
+    let expClass = 'expiry-ok';
+    if (p.expiry_date) {
+      const days = (new Date(p.expiry_date) - new Date()) / 86400000;
+      if (days < 30) expClass = 'expiry-bad';
+      else if (days < 90) expClass = 'expiry-warn';
+    }
+    return `<tr>
+      <td><code style="color:var(--primary);font-size:0.8rem;">${p.item_code}</code></td>
+      <td style="font-weight:600;">${p.name}${p.is_new_arrival?'<span class="badge-new" style="position:static;display:inline-block;margin-right:6px;font-size:0.65rem;">جديد</span>':''}</td>
+      <td style="color:var(--text-muted);font-size:0.82rem;">${p.category||'—'}</td>
+      <td style="font-weight:700;">${p.price.toFixed(2)} د</td>
+      <td style="color:var(--cash-color);font-weight:700;">${cash} د</td>
+      <td style="color:var(--transfer-color);font-weight:700;">${trans} د</td>
+      <td style="color:${stockColor};font-weight:700;">${p.quantity}</td>
+      <td class="${expClass}">${p.expiry_date||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+let medTimer = null;
+function searchMeds(q) { clearTimeout(medTimer); medTimer = setTimeout(()=>loadMeds(q), 400); }
+
+// ── Load Customers ──
+async function loadCustomers(q='') {
+  const body = document.getElementById('cust-body');
+  body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;"><span class="spinner"></span></td></tr>';
+  const r = await fetch(`/api/customers?q=${encodeURIComponent(q)}`);
+  const data = await r.json();
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">لا توجد نتائج</td></tr>';
+    return;
+  }
+  body.innerHTML = data.map(c => {
+    const net = c.debt - c.credit;
+    const netColor = net > 0 ? 'var(--danger)' : net < 0 ? 'var(--accent)' : 'var(--text-muted)';
+    const netLabel = net > 0 ? `مدين ${Math.abs(net).toFixed(2)}` : net < 0 ? `دائن ${Math.abs(net).toFixed(2)}` : 'متزن';
+    return `<tr>
+      <td><code style="color:var(--primary);">${c.customer_id}</code></td>
+      <td style="font-weight:600;">${c.customer_name}</td>
+      <td style="color:var(--text-muted);font-size:0.82rem;">${c.main_account||'—'}</td>
+      <td style="color:var(--danger);">${c.debt.toFixed(2)} د</td>
+      <td style="color:var(--accent);">${c.credit.toFixed(2)} د</td>
+      <td style="color:${netColor};font-weight:700;">${netLabel} د</td>
+      <td style="color:var(--text-muted);font-size:0.82rem;">${c.phone||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+let custTimer = null;
+function searchCustomers(q) { clearTimeout(custTimer); custTimer = setTimeout(()=>loadCustomers(q), 400); }
+
+// ── Upload File ──
+async function uploadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const resultDiv = document.getElementById('upload-result');
+  const prog = document.getElementById('upload-progress');
+  const bar = document.getElementById('upload-bar');
+  prog.classList.remove('hidden');
+  bar.style.width = '30%';
+  resultDiv.innerHTML = '<span class="spinner"></span> جارٍ الرفع...';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    bar.style.width = '70%';
+    const r = await fetch('/api/upload-excel', { method:'POST', body: fd });
+    bar.style.width = '100%';
+    const d = await r.json();
+    setTimeout(()=>prog.classList.add('hidden'), 800);
+    if (d.success || r.ok) {
+      resultDiv.innerHTML = `<div class="toast success" style="position:static;animation:none;max-width:100%;margin-top:0.5rem;">✅ ${d.message}</div>`;
+    } else {
+      resultDiv.innerHTML = `<div class="toast error" style="position:static;animation:none;max-width:100%;margin-top:0.5rem;">❌ ${d.message||d.detail}</div>`;
+    }
+  } catch(e) {
+    resultDiv.innerHTML = `<div class="toast error" style="position:static;animation:none;max-width:100%;">❌ خطأ في الاتصال</div>`;
+  }
+  input.value = '';
+}
+
+// Drag & Drop
+const dz = document.getElementById('drop-zone');
+if (dz) {
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith('.xlsx')) {
+      const dt = new DataTransfer(); dt.items.add(f);
+      const inp = document.getElementById('file-input');
+      inp.files = dt.files;
+      uploadFile(inp);
+    } else showToast('يجب أن يكون الملف بصيغة .xlsx', 'error');
+  });
+}
+
+// ── Send Notification ──
+async function sendNotify() {
+  const msg = document.getElementById('notify-msg').value.trim();
+  if (!msg) return showToast('أدخل نص الرسالة', 'error');
+  const btn = event.target;
+  btn.innerHTML = '<span class="spinner"></span> جارٍ الإرسال...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/notify-all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message: msg}) });
+    const d = await r.json();
+    document.getElementById('notify-result').innerHTML = `<div class="toast ${r.ok?'success':'error'}" style="position:static;animation:none;max-width:100%;margin-top:0.5rem;">${r.ok?'✅':'❌'} ${d.message||d.detail}</div>`;
+  } catch { showToast('خطأ في الإرسال', 'error'); }
+  finally { btn.innerHTML = '📤 إرسال للجميع'; btn.disabled = false; }
+}
+
+// ── Bot Status ──
+async function checkBotStatus() {
+  const el = document.getElementById('bot-status');
+  try {
+    const r = await fetch('/api/bot-status');
+    const d = await r.json();
+    el.textContent = d.ok ? '✅ متصل' : '❌ غير متصل';
+    el.style.color = d.ok ? 'var(--accent)' : 'var(--danger)';
+  } catch { el.textContent = '❌ خطأ'; el.style.color = 'var(--danger)'; }
+}
+checkBotStatus();
+</script>
+{% endblock %}
