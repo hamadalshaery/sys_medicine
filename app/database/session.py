@@ -6,12 +6,24 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
+import ssl
+
+# إعداد SSL مخصص للعمل مع Supabase Pooler بـ asyncpg
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+connect_args = {}
+if "supabase.com" in settings.DATABASE_URL:
+    connect_args = {"ssl": ssl_context}
+
 # إنشاء المحرك بصيغة Async
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args=connect_args
 )
 
 # مصنع الجلسات

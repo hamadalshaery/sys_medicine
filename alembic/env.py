@@ -20,7 +20,7 @@ from app.models.models import Base
 config = context.config
 
 # إعداد المتغير ليكون متصلاً بإعدادات التطبيق (PostgreSQL URL)
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -57,10 +57,20 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
     """
 
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    connect_args = {}
+    if "supabase.com" in config.get_main_option("sqlalchemy.url", ""):
+        connect_args = {"ssl": ssl_context}
+
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args
     )
 
     async with connectable.connect() as connection:

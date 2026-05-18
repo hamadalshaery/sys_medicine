@@ -75,3 +75,13 @@ async def telegram_webhook(request: Request):
     update = Update.de_json(data=update_data, bot=ptb_app.bot)
     await ptb_app.process_update(update)
     return {"ok": True}
+
+@app.get("/api/bot-status")
+async def bot_status():
+    """فحص حالة اتصال بوت تيليجرام"""
+    try:
+        bot_info = await ptb_app.bot.get_me()
+        return {"ok": True, "username": bot_info.username}
+    except Exception:
+        return {"ok": False}
+
